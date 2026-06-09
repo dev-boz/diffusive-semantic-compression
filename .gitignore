@@ -1,0 +1,26 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.ipynb_checkpoints/
+.DS_Store
+
+# Model checkpoints and large binaries
+*.pt
+*.bin
+*.safetensors
+*.ckpt
+*.pth
+
+# IDE directories
+.vscode/
+.idea/
+*.iml
+
+# Node (for any future tooling)
+node_modules/
