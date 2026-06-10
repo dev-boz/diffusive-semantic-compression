@@ -22,11 +22,14 @@ That audit was the most valuable thing in the whole project. It clarified what I
 
 What I originally meant, before the parallel-writers tangent, was a single growing output document refined across multiple passes, where each pass sees a different section of the source at a different compression level. Early passes see the whole conversation heavily compressed; later passes see narrow sections with no compression at all. Each pass edits the running output, adding or correcting detail. The skateboard-at-27 example: pass 1 sees the conversation compressed to "user mentioned learning skateboarding," pass 30 reads the specific paragraph verbatim and emits a `REPLACE` to surface "27." The compression hides detail; later passes uncover it.
 
+The mental model came from 3D graphics, where I spent years before any of this. Progressive rendering — the IPR-style viewport preview — gives you the entire frame immediately as a coarse, noisy estimate, then refines it in place as samples accumulate. You never wait for the finished image to see structure; structure arrives first, and detail resolves into it. What I wanted was IPR for text: pass 1 gives you the whole conversation at low resolution, and every later pass adds samples where the schedule points. Graphics also normalizes the idea that refinement behavior depends on where you are in the process. What you do to a frame at 8 samples per pixel is not what you do at 1024, which is the intuition that pass-conditioned training makes explicit for text.
+
 Once I had this framing right, I noticed the diffusion analogy. The forward process noises by compressing. The reverse process denoises by refining. At maximum noise, the source has been replaced by a short summary; at zero noise, by verbatim chunks. The reverse process traverses the noise schedule, integrating progressively-revealed detail into the growing output state.
 
 This led to a research proposal with three pieces:
 
-1. **Context Diffusion** — the overall architecture (multi-pass refinement of an integration state with bounded model context and unbounded source-on-disk).
+1. **Context Diffusion** — the overall architecture: multi-pass refinement of an integration state against scheduled views at decreasing compression, with bounded per-pass context and the source preserved verbatim on disk.
+
 2. **DiSCo (Diffusion-based Semantic Compression)** — the choice of length-reducing semantic compression as the noise function, which structurally distinguishes the approach from masked diffusion and hierarchical-vocabulary diffusion because the noised sequence is shorter than the source rather than the same length.
 3. **Pass-conditioned training** — explicit position conditioning during training, so a model native to the architecture learns to behave differently at different schedule positions.
 
