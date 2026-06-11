@@ -140,6 +140,18 @@ RAPTOR is a retrieval system: at inference time, nodes are selected by embedding
 
 The two claimed-novel contributions don't touch RAPTOR at all: it has no noise-function framing — the tree is an index, not a forward process with a trained reverse traversal — and it proposes no training objective; the retriever and reader are off the shelf.
 
+### Why this isn't LCM
+
+[LCM](https://arxiv.org/abs/2605.04050) (Ehrlich & Blackman, 2026) extends RLM by moving recursion out of the model and into a deterministic engine: a hierarchical summary DAG compacts older messages when token thresholds trip, originals are preserved verbatim in an immutable store, and engine-managed map primitives replace model-written loops. It is the closest published neighbour on the determinism axis, and it shares two commitments made here: hierarchical summarization and lossless preservation of originals. The divergences are direction, symmetry, and the training question.
+
+**Direction.** LCM compresses forward: history is compacted as it accrues, triggered by token thresholds. Context Diffusion decompresses forward: a static source enters at maximum compression and a schedule traverses toward verbatim.
+
+**Symmetry.** LCM's determinism is one-sided. Compaction is engine-triggered, but recovery is model-contingent — the agent must choose to grep or expand a summary node, with expansion delegated to sub-agents — and the authors state plainly that they "cannot deterministically guarantee that the agent will always do so." That is the late-realization failure of §1 in softer form: detail survives, but reaching it depends on a realization firing. Context Diffusion is deterministic on both sides. The schedule governs recovery too, so no realization has to fire for any region to be read at full resolution.
+
+**Training.** LCM proposes no training objective and frames that as a deployment virtue: the engine works with off-the-shelf models today, deferring the question of whether models could be trained to do this work natively. Pass-Conditioned Training is a proposal for exactly the deferred piece. The two are complementary responses to the same observed weakness — untrained models handle multi-pass context work unreliably, so LCM engineers around the model while PCT trains into it.
+
+**Scope.** LCM's map primitives handle arbitrarily large inputs when the task decomposes into independent per-item calls. The integration state here targets the non-decomposable remainder: tasks where regions of the source bear on each other and a conclusion formed early must be revisable when later detail contradicts it. If anything, LCM's results — beating a frontier coding agent at every context length from 32K to 1M — are evidence for the premise both systems share: deterministic context manipulation outperforms both raw long context and model-driven agency.
+
 ### Why this isn't just RLM
 
 RLM treats the long source as a REPL variable that the LLM examines via code. The LLM decides what slices to look at, what to compress, what to recurse on. Compression in RLM is implicit and LLM-controlled. DiSCo has an explicit deterministic compression schedule where slice size and compression level are coupled by design. RLM is closer to "agent doing tool use over a long document"; DiSCo is closer to "diffusion process with compression as its noise medium." Both can handle arbitrary-length inputs; the mechanism for *how* is different.
@@ -246,4 +258,4 @@ Contact: GitHub issues on this repository.
 
 ---
 
-*Last updated: 2026-06-10. This document will be revised as the viability experiments produce data and as prior art is refined. Version history is in the repository commit log.*
+*Last updated: 2026-06-11. This document will be revised as the viability experiments produce data and as prior art is refined. Version history is in the repository commit log.*
