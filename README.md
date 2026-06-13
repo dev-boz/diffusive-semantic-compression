@@ -4,6 +4,8 @@ A technical writeup of two contributions to multi-pass language model architectu
 
 This is a proposal, not a validated finding. Small scale viability experiments are in progress. Collaboration is welcome and encouraged, particularly on empirical validation and on prior-art that I may have missed.
 
+The research program built on this proposal — with its pre-registration, kill criteria, and adversarial-review audit trail — lives in [pass-conditioned-reading](https://github.com/dev-boz/pass-conditioned-reading).
+
 ## 1. The problem
 
 Production chat systems and agent frameworks usually handle conversations or task histories that exceed the model's context window through *compaction*: irreversibly summarizing older content into shorter form. Compaction is lossy at the moment it's applied. Details the summarizer didn't think were important are gone, even if a later turn reveals them to be relevant. The user cannot reliably see what was lost. The model cannot recover it easily.
