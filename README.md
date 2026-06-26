@@ -6,6 +6,12 @@ This is a proposal, not a validated finding. Small scale viability experiments a
 
 The research program built on this proposal — with its pre-registration, kill criteria, and adversarial-review audit trail — lives in [pass-conditioned-reading](https://github.com/dev-boz/pass-conditioned-reading).
 
+## Empirical testing so far
+
+The empirical testing for this architecture lives in the [pass-conditioned-reading](https://github.com/dev-boz/pass-conditioned-reading) program. Seven experiments (E0, P1–P7) ran on off-the-shelf instruction-tuned models — principally Qwen2.5-7B-Instruct — with no fine-tuning, as an untrained floor baseline. The honest summary: the architecture **did not fail in ways that close the gate, and showed enough potential to justify a trained-model next step (E2-prime)** — it did not validate the architecture. The full record→retain→compose chain on a fact split across non-adjacent passages did not fire in the primary 7B test (0 of 4 draws); across model families it appeared only as isolated existence proofs — one confirmed end-to-end case in each of three families, each a single draw. The coarse scaffold did not out-compose a plain verbatim-only read (per-family tally llama 1v0, gpt 0v0, nova 0v0, mistral 1v1, haiku 2v7, favouring verbatim), and of 22 seeds (in the three strong-follower families whose verbatim control fails — Llama-70B, gpt-4o-mini, Nova-Lite) that held both operands in final state, 21 failed to recombine them at close time. The pre-registered recall kill-condition (P4) failed: a 32-pass coupled schedule tied cheap dense head+tail truncation at 5/8 facts each. *"Possibly feasible with a trained model"* is the ceiling of what the evidence supports; trained-model performance has never been measured.
+
+Full per-experiment rates, n-values, pre-registered gate results, open questions, the self-correction record, and the concrete harness requirements specified for E2-prime are in [`docs/CONSOLIDATED-FINDINGS.md`](https://github.com/dev-boz/pass-conditioned-reading/blob/main/docs/CONSOLIDATED-FINDINGS.md) in the pass-conditioned-reading repo.
+
 ## 1. The problem
 
 Production chat systems and agent frameworks usually handle conversations or task histories that exceed the model's context window through *compaction*: irreversibly summarizing older content into shorter form. Compaction is lossy at the moment it's applied. Details the summarizer didn't think were important are gone, even if a later turn reveals them to be relevant. The user cannot reliably see what was lost. The model cannot recover it easily.
@@ -260,4 +266,4 @@ Contact: GitHub issues on this repository.
 
 ---
 
-*Last updated: 2026-06-11. This document will be revised as the viability experiments produce data and as prior art is refined. Version history is in the repository commit log.*
+*Last updated: 2026-06-26. This document will be revised as the viability experiments produce data and as prior art is refined. Version history is in the repository commit log.*
