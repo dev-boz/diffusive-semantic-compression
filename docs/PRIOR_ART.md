@@ -37,4 +37,3 @@ These provide the diffusion-process framing and timestep-conditioning training. 
 | Vocabulary abstraction (HDLM) | tokens replaced with coarse ancestors | original tokens restored | constant |
 | **Length-reducing semantic compression (DiSCo)** | source compressed to short summary | source read verbatim | varies dramatically |
 
-Context diffusion overlaps with so many other successful systems, blending them together, whilst keeping its own uniqueness. It gives me confidence in its viability.
