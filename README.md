@@ -34,7 +34,7 @@ This project has iterated through some failed attempts before landing here. I al
 
 ## Current status
 
-I’m currently doing viability testing using small untrained models (mostly Qwen family). The current status is “minimum viability" which means many parts working in isolation and a handful of successful end-to-end runs. It is not yet fully conclusive whether the issues are due to lack of model training, improper testing method or architecture failure. This is still very early testing but there are very early signs that a custom trained model will perform significantly better. Testing repo -here-
+I’m currently doing viability testing using small untrained models (mostly Qwen family). The current status is “minimum viability" which means many parts working in isolation and a handful of successful end-to-end runs. It is not yet fully conclusive whether the issues are due to lack of model training, improper testing method or architecture failure. This is still very early testing but there are very early signs that a custom trained model will perform significantly better. Testing repo [here](https://github.com/dev-boz/pass-conditioned-reading)
 
 ## Contributing
 
