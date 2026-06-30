@@ -22,7 +22,7 @@ I’m a visual thinker. Everything here is visualised in abstract first. As such
 
 ## The core concepts:
 
-Diffusion-based Semantic Compression (DiSCo) - the compression-as-noise making the input shorter instead of masking. For example a 100k document is compressed to 10k or the initial pass. The model only sees 10k per pass.
+Diffusion-based Semantic Compression (DiSCo) - the compression-as-noise making the input shorter instead of masking. For example a 100k document is compressed to 10k for the initial pass. The model only sees 10k per pass.
 
 Pass-conditioned reading - making sure the model efficiently reads the passes. First passes get a coarse summary and should build scaffolding. Late passes get verbatim detail and add or modify specific detail. The model is told where it is in the overall process.
 
