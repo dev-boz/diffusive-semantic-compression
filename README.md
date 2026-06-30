@@ -16,21 +16,24 @@ I have a background in 3d graphics, so my visual model was basically how very co
 
 The other area that ties in is the explosion of context compression schemes that are being developed to deal with token costs. I see new projects coming out all the time such as RTK, headroom, caveman etc. many minds working on the problem of compression without losing meaning. My goal became much clearer - apply that same thinking to compress a massive conversation. But none of these are universally applicable, some handle code and terminal outputs, others like caveman handle semantic compression. But they are all still inherently lossy on the large-conversational scale.
 
-The solution is an intersection of these ideas. Use a mixture of compression schemes combined with a coarse-to-fine input system and progressive output do disk. Work within the limitations of the models context window input/output by keeping most of the context and output outside of cache. I realised that the compression can map to the diffusion idea by way of compressed slices/passes. First pass is the whole session highly compressed, Second 2 passes are the conversation split in 2 with slightly less compression. The final passes are verbatim text. Each pass has partial output to disk, influenced by the amount of compression. This was my solution to preserving overall nuance & fine detail at the same time. There was always an inherent risk that I would be introducing a new lossy factor, which is the loss incurred by the steps from coarse to fine and the combined output. I believe the best solution to this problem would be a model that is trained to treat each slice/pass differently.
+The solution is an intersection of these ideas. Use a mixture of compression schemes combined with a coarse-to-fine input system and progressive output to disk. Work within the limitations of the models context window input/output by keeping most of the context and output outside of cache. I realised that the compression can map to the diffusion idea by way of compressed slices/passes. First pass is the whole session highly compressed, Second 2 passes are the conversation split in 2 with slightly less compression. The final passes are verbatim text. Each pass has partial output to disk, influenced by the amount of compression. This was my solution to preserving overall nuance & fine detail at the same time. There was always an inherent risk that I would be introducing a new lossy factor, which is the loss incurred by the steps from coarse to fine and the combined output. I believe the best solution to this problem would be a model that is trained to treat each slice/pass differently.
 
 I’m a visual thinker. Everything here is visualised in abstract first. As such I couldn’t help but create a visualisation of [how the system works](https://dev-boz.github.io/diffusive-semantic-compression/demo/architecture-demo.html)
 
 ## The core concepts:
 
-Diffusion-based Semantic Compression (DiSCo) - the compression-as-noise idea. 
+Diffusion-based Semantic Compression (DiSCo) - the compression-as-noise making the input shorter instead of masking. For example a 100k document is compressed to 10k or the initial pass. The model only sees 10k per pass.
 
-Pass-conditioned reading - making sure the model efficiently reads the passes. First passes should be scaffolding to prepare for final details from the later passes.
+Pass-conditioned reading - making sure the model efficiently reads the passes. First passes get a coarse summary and should build scaffolding. Late passes get verbatim detail and add or modify specific detail. The model is told where it is in the overall process.
 
-Context diffusion - to sum up the overall combined system. We diffuse/noise the context with semantic compression. Then we de-noise with progressive refinement.
+Context diffusion - How the two pieces above combine into one system. We diffuse/noise the context with semantic compression. Then we de-noise with progressive refinement. Source on disk, output on disk. Just like IPR you can watch it materialise in real time, from a blurry preview to a sharp final output.
+
 
 Caveat: there is a very obvious tradeoff, as context size grows, token use and time per output increases linearly. This would not be ideal for everyone. But for a few niche use cases the tradeoff is worth it when you really need to capture the whole conversation with both nuance and fine details. That said, I have a few ideas for features that can possibly alleviate this burden slightly. Read more [here](https://github.com/dev-boz/diffusive-semantic-compression/blob/master/docs/FEATURES.md)
 
 This project has iterated through some failed attempts before landing here. I also got part way through when I found RLM (Zhang) in a sweep for prior art. Of all the other similar systems RLM is the closest in both functionality and intent. I actually had to refine my original idea since it was too similar. I think it's always a good sign that you're on the right path when your design converges with existing (and very good) ideas. What remains, which I believe is still novel, is using compressed slices as noise. I’ve done a pretty thorough look at other similar prior art which I’ll list the similarities and differences [here](https://github.com/dev-boz/diffusive-semantic-compression/blob/master/docs/PRIOR_ART.md)
+
+Context diffusion overlaps with so many other successful systems, blending them together, whilst keeping its own uniqueness. It gives me confidence in its viability.
 
 ## Current status
 
