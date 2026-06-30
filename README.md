@@ -18,7 +18,7 @@ The other area that ties in is the explosion of context compression schemes that
 
 The solution is an intersection of these ideas. Use a mixture of compression schemes combined with a coarse-to-fine input system and progressive output do disk. Work within the limitations of the models context window input/output by keeping most of the context and output outside of cache. I realised that the compression can map to the diffusion idea by way of compressed slices/passes. First pass is the whole session highly compressed, Second 2 passes are the conversation split in 2 with slightly less compression. The final passes are verbatim text. Each pass has partial output to disk, influenced by the amount of compression. This was my solution to preserving overall nuance & fine detail at the same time. There was always an inherent risk that I would be introducing a new lossy factor, which is the loss incurred by the steps from coarse to fine and the combined output. I believe the best solution to this problem would be a model that is trained to treat each slice/pass differently.
 
-I’m a visual thinker. Everything here is visualised in abstract first. As such I couldn’t help but create a visualisation of -how the system works-
+I’m a visual thinker. Everything here is visualised in abstract first. As such I couldn’t help but create a visualisation of [how the system works](https://dev-boz.github.io/diffusive-semantic-compression/demo/architecture-demo.html)
 
 ## The core concepts:
 
