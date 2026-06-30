@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pass-Conditioned Reading — Architecture Demo</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1a1a2e;--surface:#222240;--surface2:#2a2a4a;
+  --border:#3a3a5c;--text:#c8c8dc;--text-dim:#8888a8;
+  --accent:#6c8cff;--accent-g:#4a6aef;
+  --add:#4cda8a;--replace:#ffaa44;--strike:#ff6666;
+  --flash:#ffaa4466;
+  --state-feed:#b48cff;
+}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:"SF Mono","Cascadia Code","Consolas",monospace;
+  font-size:13px;line-height:1.5;overflow-x:hidden;
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;padding:24px 16px;
+}
+
+/* ── Header ─────────────────────────────── */
+.header{text-align:center;margin-bottom:20px;max-width:800px}
+.header h1{font-size:18px;font-weight:600;color:var(--accent);letter-spacing:.5px;margin-bottom:4px}
+.header p{font-size:11px;color:var(--text-dim)}
+
+/* ── Stage ──────────────────────────────── */
+.stage{display:flex;align-items:flex-start;gap:32px;width:100%;max-width:1020px;min-height:460px;position:relative}
+
+/* ── LEFT: Document ─────────────────────── */
+.doc-zone{flex:0 0 220px;display:flex;flex-direction:column;align-items:center}
+.doc-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.doc-container{position:relative;width:180px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow:hidden;min-height:360px}
+.doc-line{height:3px;margin-bottom:3px;border-radius:1px;background:#555570;transition:background .3s,opacity .3s}
+.doc-line.highlighted{background:var(--accent);opacity:1}
+.doc-line.dimmed{opacity:.25}
+.doc-caption{margin-top:12px;font-size:11px;color:var(--text-dim);text-align:center;min-height:36px;line-height:1.4}
+.doc-caption .scope{color:var(--accent);font-weight:600}
+.doc-caption .compression{color:var(--text)}
+
+/* ── Shrunk view overlay ────────────────── */
+.shrunk-view{position:absolute;top:0;left:0;width:180px;background:var(--surface2);border:1px solid var(--accent);border-radius:4px;padding:8px 10px;opacity:0;pointer-events:none;z-index:10;box-shadow:0 0 12px #6c8cff33}
+.shrunk-line{height:2px;margin-bottom:2px;border-radius:1px;background:var(--accent)}
+
+/* ── MIDDLE: Pipeline ───────────────────── */
+.pipeline-zone{flex:0 0 140px;display:flex;flex-direction:column;align-items:center;padding-top:130px;position:relative}
+.pipeline-box{width:120px;height:80px;background:var(--surface);border:2px solid var(--border);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .3s,box-shadow .3s;position:relative;z-index:5}
+.pipeline-box.pulsing{border-color:var(--accent);box-shadow:0 0 20px #6c8cff44,0 0 40px #6c8cff22;animation:pulse-glow .6s ease-in-out 2}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 20px #6c8cff44}50%{box-shadow:0 0 30px #6c8cff88,0 0 50px #6c8cff44}}
+.pipeline-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px}
+.pipeline-name{font-size:13px;color:var(--accent);font-weight:600;margin-top:2px}
+.arrow-in,.arrow-out{font-size:18px;color:var(--border);margin:6px 0;transition:color .3s}
+.arrow-in.active,.arrow-out.active{color:var(--accent)}
+.pass-indicator{margin-top:10px;font-size:11px;color:var(--text-dim)}
+.pass-indicator .pass-num{color:var(--accent);font-weight:600}
+
+/* ── RIGHT: Integration State ───────────── */
+.state-zone{flex:1 1 auto;min-width:300px;display:flex;flex-direction:column}
+.state-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.state-container{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:16px 18px;min-height:360px;max-height:520px;overflow-y:auto;position:relative;transition:border-color .4s,box-shadow .4s}
+.state-empty{color:var(--text-dim);font-style:italic;font-size:11px;padding:20px 0}
+
+.state-entry{margin-bottom:2px;font-size:12px;line-height:1.5;opacity:0;transform:translateY(4px);transition:opacity .4s,transform .4s,background .6s,box-shadow .3s}
+.state-entry.visible{opacity:1;transform:translateY(0)}
+.state-entry.header-line{color:var(--accent);font-weight:600;margin-top:8px;font-size:12px}
+.state-entry.header-line:first-child{margin-top:0}
+.state-entry.bullet-line{color:var(--text);padding-left:16px}
+.state-entry.bullet-line::before{content:"\2022 ";color:var(--text-dim)}
+.state-entry.new-add{background:#4cda8a18;border-left:2px solid var(--add);padding-left:14px;margin-left:0}
+.state-entry.new-add::before{content:"\2022 ";color:var(--add)}
+.state-entry.replaced{background:var(--flash);border-left:2px solid var(--replace)}
+.state-entry.struck{text-decoration:line-through;color:var(--strike);opacity:.5}
+.state-entry.correction-flash{animation:correction-highlight 1.5s ease-out}
+@keyframes correction-highlight{0%{background:#ffaa4466}100%{background:transparent}}
+.state-entry .tag{font-size:9px;padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:middle;font-weight:600}
+.tag-add{background:#4cda8a33;color:var(--add)}
+.tag-replace{background:#ffaa4433;color:var(--replace)}
+.tag-scaffold{background:#6c8cff22;color:var(--accent)}
+
+/* ── State feeding visual ───────────────── */
+.state-container.feeding{border-color:var(--state-feed);box-shadow:0 0 12px #b48cff22}
+
+/* ── State-to-pipeline arrow ────────────── */
+.state-feed-arrow{
+  position:absolute;top:50%;
+  font-size:14px;color:transparent;
+  transition:color .3s,opacity .3s;opacity:0;
+  pointer-events:none;z-index:6;
+  white-space:nowrap;
+  letter-spacing:2px;
+}
+.state-feed-arrow.active{color:var(--state-feed);opacity:1}
+@keyframes arrow-flow{
+  0%{opacity:.3;transform:translateX(10px)}
+  50%{opacity:1;transform:translateX(0px)}
+  100%{opacity:.3;transform:translateX(-10px)}
+}
+.state-feed-arrow.active span{
+  display:inline-block;
+  animation:arrow-flow .8s ease-in-out infinite;
+}
+
+/* ── Prompt badge ───────────────────────── */
+.prompt-badge{
+  position:absolute;
+  top:-32px;left:50%;transform:translateX(-50%) scale(0.7);
+  background:var(--surface2);border:1px solid var(--state-feed);
+  border-radius:6px;padding:3px 10px;
+  font-size:10px;color:var(--state-feed);font-weight:600;
+  white-space:nowrap;opacity:0;
+  transition:opacity .3s,transform .3s;
+  z-index:10;pointer-events:none;
+  box-shadow:0 0 10px #b48cff33;
+}
+.prompt-badge.visible{opacity:1;transform:translateX(-50%) scale(1)}
+.prompt-badge.fly-in{
+  transition:opacity .25s,transform .35s ease-in;
+  opacity:0;transform:translateX(-50%) scale(0.5) translateY(12px);
+}
+
+/* ── Controls ───────────────────────────── */
+.controls{display:flex;align-items:center;gap:12px;margin-top:24px;flex-wrap:wrap;justify-content:center}
+.ctrl-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 18px;border-radius:6px;font-family:inherit;font-size:12px;cursor:pointer;transition:border-color .2s,color .2s,background .2s}
+.ctrl-btn:hover{border-color:var(--accent);color:#fff}
+.ctrl-btn:active{background:var(--surface2)}
+.ctrl-btn.primary{background:var(--accent-g);border-color:var(--accent);color:#fff;font-weight:600}
+.ctrl-btn.primary:hover{background:var(--accent)}
+.ctrl-btn:disabled{opacity:.35;cursor:not-allowed}
+.progress-dots{display:flex;gap:5px;margin:0 8px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--border);transition:background .3s}
+.dot.active{background:var(--accent)}
+.dot.done{background:var(--add)}
+.phase-label{font-size:9px;color:var(--text-dim);margin:0 2px}
+
+/* ── Legend ──────────────────────────────── */
+.legend{margin-top:20px;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:6px;max-width:640px;width:100%}
+.legend-title{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.legend-body{font-size:11px;color:var(--text-dim);line-height:1.6}
+.legend-item{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.legend-swatch{width:12px;height:3px;border-radius:1px;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Pass-Conditioned Reading</h1>
+  <p>One schedule position governs both what the model sees and what it emits</p>
+</div>
+
+<div class="stage" id="stage">
+  <!-- LEFT -->
+  <div class="doc-zone">
+    <div class="doc-label">Source Document</div>
+    <div class="doc-container" id="doc-container"></div>
+    <div class="doc-caption" id="doc-caption">&nbsp;</div>
+  </div>
+  <!-- MIDDLE -->
+  <div class="pipeline-zone">
+    <div class="arrow-in" id="arrow-in">&#x25BC;</div>
+    <div class="pipeline-box" id="pipeline-box">
+      <div class="prompt-badge" id="prompt-badge"></div>
+      <div class="pipeline-label">model</div>
+      <div class="pipeline-name">f(v, s, k)</div>
+    </div>
+    <div class="arrow-out" id="arrow-out">&#x25BC;</div>
+    <div class="pass-indicator" id="pass-indicator">&nbsp;</div>
+  </div>
+  <!-- State feed arrow (positioned between pipeline and state) -->
+  <div class="state-feed-arrow" id="state-feed-arrow"><span>&#x25C0;&#x25C0;&#x25C0;</span></div>
+  <!-- RIGHT -->
+  <div class="state-zone">
+    <div class="state-label">Integration State s<sub>k</sub></div>
+    <div class="state-container" id="state-container">
+      <div class="state-empty" id="state-empty">empty &mdash; waiting for pass 1</div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="ctrl-btn primary" id="btn-play">&#9654; Play</button>
+  <button class="ctrl-btn" id="btn-step">Step &#x25B6;&#xFE0E;</button>
+  <button class="ctrl-btn" id="btn-reset">Reset</button>
+  <div class="progress-dots" id="progress-dots"></div>
+</div>
+
+<div class="legend">
+  <div class="legend-title">Schedule Coupling</div>
+  <div class="legend-body">
+    <div class="legend-item">
+      <span class="legend-swatch" style="background:var(--accent)"></span>
+      <span>Input view (left) and output detail (right) move on <strong style="color:var(--text)">one</strong> schedule.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-swatch" style="background:var(--add)"></span>
+      <span><span style="color:var(--add)">ADD</span> &mdash; new detail fills in under existing headers</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-swatch" style="background:var(--replace)"></span>
+      <span><span style="color:var(--replace)">REPLACE</span> &mdash; a later, sharper view corrects an earlier compressed estimate</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-swatch" style="background:var(--state-feed)"></span>
+      <span><span style="color:var(--state-feed)">STATE + PROMPT</span> &mdash; prior output s<sub>k-1</sub> and position (k, K) fed back as input on passes 2+</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ──────────────────────────────────────────
+   CONSTANTS
+   ────────────────────────────────────────── */
+var DOC_LINES = 100;
+var TOTAL_PASSES = 15;
+
+function lineWidth(i) {
+  var s = Math.sin(i * 7.3 + 2.1) * 0.5 + 0.5;
+  if (i % 12 === 0) return 30 + s * 15;
+  return 55 + s * 40;
+}
+
+/* ──────────────────────────────────────────
+   PASS SCHEDULE DATA
+   ────────────────────────────────────────── */
+var passes = [
+  /* ── Pass 1: whole document, 10× ─────── */
+  {
+    caption: ['whole document', 'heavy compression (\u224810\u00d7)'],
+    range: [0, 99], shrinkTo: 10,
+    adds: [
+      { id:'h1', type:'header', text:'1  Background & Motivation' },
+      { id:'b1a', type:'bullet', text:'prior work on multi-pass reading' },
+      { id:'h2', type:'header', text:'2  Architecture Overview' },
+      { id:'b2a', type:'bullet', text:'coupled schedule governs input & output' },
+      { id:'h3', type:'header', text:'3  Compression Schedule' },
+      { id:'b3a', type:'bullet', text:'views narrow over passes' },
+      { id:'h4', type:'header', text:'4  Experimental Design' },
+      { id:'b4a', type:'bullet', text:'factorial ablation with ~N arms' }
+    ],
+    replaces: [], tagStyle: 'scaffold'
+  },
+
+  /* ── Pass 2: top half, 20× ──────────── */
+  {
+    caption: ['top half', 'lighter compression (\u224820\u00d7 of full, denser view)'],
+    range: [0, 49], shrinkTo: 10,
+    adds: [
+      { id:'b1b', type:'bullet', text:'gap: no coupled-vs-decoupled ablation found', after:'b1a' },
+      { id:'b2b', type:'bullet', text:'position signal (k, K) as explicit input', after:'b2a' },
+      { id:'b2c', type:'bullet', text:'edit operations: ADD / REPLACE on state', after:'b2b' }
+    ],
+    replaces: [
+      { id:'b1a', newText:'prior multi-pass: Gist Tokens, CEPE, chunked prefill' }
+    ], tagStyle: 'add'
+  },
+
+  /* ── Pass 3: bottom half, 20× ────────── */
+  {
+    caption: ['bottom half', 'same compression (\u224820\u00d7)'],
+    range: [50, 99], shrinkTo: 10,
+    adds: [
+      { id:'b3b', type:'bullet', text:'compression ratio is a schedule parameter', after:'b3a' },
+      { id:'b4b', type:'bullet', text:'training data is teacher-generated (distillation)', after:'b4a' }
+    ],
+    replaces: [
+      { id:'b4a', newText:'factorial ablation: coupled vs single-sided vs misaligned' }
+    ], tagStyle: 'add'
+  },
+
+  /* ── Pass 4: Q1 (top quarter), 40× ──── */
+  {
+    caption: ['top quarter', 'sharper (\u224840\u00d7)'],
+    range: [0, 24], shrinkTo: 10,
+    adds: [
+      { id:'b1c', type:'bullet', text:'M1 primary claim: coupling interaction term > 0', after:'b1b' },
+      { id:'b1d', type:'bullet', text:'kill criterion: single-sided arm matches \u2192 M1 dead', after:'b1c' }
+    ],
+    replaces: [], tagStyle: 'add'
+  },
+
+  /* ── Pass 5: Q2, 40× ────────────────── */
+  {
+    caption: ['2nd quarter', 'same compression (\u224840\u00d7)'],
+    range: [25, 49], shrinkTo: 10,
+    adds: [
+      { id:'b2d', type:'bullet', text:'pass 1 renders scaffold; later passes emit edits', after:'b2c' },
+      { id:'b2e', type:'bullet', text:'bounded scaffold budget B\u209b constrains pass-1 cost', after:'b2d' }
+    ],
+    replaces: [], tagStyle: 'add'
+  },
+
+  /* ── Pass 6: Q3, 40× ────────────────── */
+  {
+    caption: ['3rd quarter', 'same compression (\u224840\u00d7)'],
+    range: [50, 74], shrinkTo: 10,
+    adds: [
+      { id:'b3c', type:'bullet', text:'DiSCo framing: compression as diffusion noise', after:'b3b' }
+    ],
+    replaces: [
+      { id:'b3a', newText:'whole \u2192 halves \u2192 quarters \u2192 verbatim slices' }
+    ], tagStyle: 'add'
+  },
+
+  /* ── Pass 7: Q4, 40× ────────────────── */
+  {
+    caption: ['4th quarter', 'same compression (\u224840\u00d7)'],
+    range: [75, 99], shrinkTo: 10,
+    adds: [
+      { id:'b4c', type:'bullet', text:'binary-mode-token arm tests mode-switch confound', after:'b4b' }
+    ],
+    replaces: [], tagStyle: 'add'
+  },
+
+  /* ── Passes 8-15: verbatim 1/8 slices ── */
+  { caption:['verbatim 1/8','no compression'], range:[0,12], shrinkTo:null, fast:true,
+    adds:[], replaces:[], tagStyle:'add' },
+  { caption:['verbatim 2/8','no compression'], range:[13,24], shrinkTo:null, fast:true,
+    adds:[
+      { id:'b1e', type:'bullet', text:'NaviEdit finds decoupling wins for images \u2014 coupling is setting-dependent', after:'b1d' }
+    ], replaces:[], tagStyle:'add' },
+  { caption:['verbatim 3/8','no compression'], range:[25,37], shrinkTo:null, fast:true,
+    adds:[], replaces:[], tagStyle:'add' },
+  { caption:['verbatim 4/8','no compression'], range:[38,49], shrinkTo:null, fast:true,
+    adds:[], replaces:[], tagStyle:'add' },
+  { caption:['verbatim 5/8','no compression'], range:[50,62], shrinkTo:null, fast:true,
+    adds:[], replaces:[
+      { id:'b4a', newText:'2\u00d72 factorial + misalignment arm, matched at 4.2\u00d710\u2079 FLOPs', isMoney:true }
+    ], tagStyle:'add' },
+  { caption:['verbatim 6/8','no compression'], range:[63,74], shrinkTo:null, fast:true,
+    adds:[], replaces:[], tagStyle:'add' },
+  { caption:['verbatim 7/8','no compression'], range:[75,87], shrinkTo:null, fast:true,
+    adds:[
+      { id:'b4d', type:'bullet', text:'schedule-blind-teacher control listed as stretch experiment', after:'b4c' }
+    ], replaces:[], tagStyle:'add' },
+  { caption:['verbatim 8/8','no compression'], range:[88,99], shrinkTo:null, fast:true,
+    adds:[], replaces:[], tagStyle:'add' }
+];
+
+/* ──────────────────────────────────────────
+   DOM REFS
+   ────────────────────────────────────────── */
+var docContainer   = document.getElementById('doc-container');
+var docCaption     = document.getElementById('doc-caption');
+var stateContainer = document.getElementById('state-container');
+var stateEmpty     = document.getElementById('state-empty');
+var pipelineBox    = document.getElementById('pipeline-box');
+var arrowIn        = document.getElementById('arrow-in');
+var arrowOut       = document.getElementById('arrow-out');
+var passIndicator  = document.getElementById('pass-indicator');
+var btnPlay        = document.getElementById('btn-play');
+var btnStep        = document.getElementById('btn-step');
+var btnReset       = document.getElementById('btn-reset');
+var progressDots   = document.getElementById('progress-dots');
+var stateFeedArrow = document.getElementById('state-feed-arrow');
+var promptBadge    = document.getElementById('prompt-badge');
+
+/* Build document lines */
+var docLineEls = [];
+for (var i = 0; i < DOC_LINES; i++) {
+  var el = document.createElement('div');
+  el.className = 'doc-line';
+  el.style.width = lineWidth(i) + '%';
+  docContainer.appendChild(el);
+  docLineEls.push(el);
+}
+
+/* Build progress dots with phase separators */
+var dots = [];
+for (var d = 0; d < TOTAL_PASSES; d++) {
+  if (d === 1 || d === 3 || d === 7) {
+    var sep = document.createElement('span');
+    sep.className = 'phase-label';
+    sep.textContent = '\u00b7';
+    progressDots.appendChild(sep);
+  }
+  var dot = document.createElement('div');
+  dot.className = 'dot';
+  progressDots.appendChild(dot);
+  dots.push(dot);
+}
+
+/* Position the state-feed arrow between pipeline and state */
+function positionFeedArrow() {
+  var stage = document.getElementById('stage');
+  var pBox = pipelineBox.getBoundingClientRect();
+  var sCont = stateContainer.getBoundingClientRect();
+  var stageRect = stage.getBoundingClientRect();
+
+  // Horizontal center between pipeline right edge and state left edge
+  var arrowLeft = (pBox.right + sCont.left) / 2 - stageRect.left;
+  // Vertical center of the pipeline box
+  var arrowTop = pBox.top + pBox.height / 2 - stageRect.top;
+
+  stateFeedArrow.style.left = arrowLeft + 'px';
+  stateFeedArrow.style.top = arrowTop + 'px';
+  stateFeedArrow.style.transform = 'translate(-50%, -50%)';
+}
+
+/* ──────────────────────────────────────────
+   STATE TRACKING
+   ────────────────────────────────────────── */
+var currentPass = -1;
+var isPlaying = false;
+var stateOrder = [];
+var stateElements = {};
+
+function sleep(ms) {
+  return new Promise(function(r) { setTimeout(r, ms); });
+}
+
+function clearState() {
+  stateOrder = [];
+  stateElements = {};
+  stateContainer.replaceChildren();
+  stateEmpty.style.display = '';
+  stateContainer.appendChild(stateEmpty);
+}
+
+function clearFeedVisuals() {
+  stateContainer.classList.remove('feeding');
+  stateFeedArrow.classList.remove('active');
+  promptBadge.classList.remove('visible');
+  promptBadge.classList.remove('fly-in');
+}
+
+function resetAll() {
+  stopPlay();
+  currentPass = -1;
+  clearState();
+  clearFeedVisuals();
+  for (var i = 0; i < docLineEls.length; i++) {
+    docLineEls[i].className = 'doc-line';
+    docLineEls[i].style.opacity = '';
+  }
+  docCaption.textContent = '\u00a0';
+  pipelineBox.classList.remove('pulsing');
+  arrowIn.classList.remove('active');
+  arrowOut.classList.remove('active');
+  passIndicator.textContent = '\u00a0';
+  for (var j = 0; j < dots.length; j++) dots[j].className = 'dot';
+  btnPlay.disabled = false;
+  btnStep.disabled = false;
+}
+
+/* ──────────────────────────────────────────
+   ANIMATION: State + Prompt feed (passes 2+)
+   ────────────────────────────────────────── */
+async function animateStateFeed(idx, sp) {
+  if (idx === 0) return; // pass 1 has no prior state
+
+  var pNum = idx + 1;
+  positionFeedArrow();
+
+  // 1. Show prompt badge (k, K) above the pipeline box
+  promptBadge.textContent = 'k=' + pNum + '  K=' + TOTAL_PASSES;
+  promptBadge.classList.remove('fly-in');
+  promptBadge.classList.add('visible');
+
+  // 2. Highlight the state container border
+  stateContainer.classList.add('feeding');
+
+  await sleep(300 * sp);
+
+  // 3. Activate the horizontal arrow (state → pipeline)
+  stateFeedArrow.classList.add('active');
+  await sleep(400 * sp);
+
+  // 4. Fly the prompt badge into the pipeline
+  promptBadge.classList.remove('visible');
+  promptBadge.classList.add('fly-in');
+  await sleep(250 * sp);
+
+  // 5. Clean up
+  stateFeedArrow.classList.remove('active');
+  stateContainer.classList.remove('feeding');
+}
+
+/* ──────────────────────────────────────────
+   ANIMATION ENGINE
+   ────────────────────────────────────────── */
+async function animatePass(idx) {
+  if (idx >= TOTAL_PASSES) { stopPlay(); return; }
+  currentPass = idx;
+  var pass = passes[idx];
+  var pNum = idx + 1;
+  var sp = pass.fast ? 0.5 : 1;  // speed multiplier for verbatim passes
+  btnStep.disabled = true;
+
+  // clear any leftover feed visuals
+  clearFeedVisuals();
+
+  // dots
+  for (var d = 0; d < dots.length; d++) {
+    if (d < idx) dots[d].className = 'dot done';
+    else if (d === idx) dots[d].className = 'dot active';
+    else dots[d].className = 'dot';
+  }
+
+  // ── 1. Highlight document region ──
+  var lo = pass.range[0], hi = pass.range[1];
+  for (var i = 0; i < DOC_LINES; i++) {
+    docLineEls[i].className = (i >= lo && i <= hi) ? 'doc-line highlighted' : 'doc-line dimmed';
+  }
+
+  // caption
+  docCaption.replaceChildren();
+  var sScope = document.createElement('span');
+  sScope.className = 'scope';
+  sScope.textContent = pass.caption[0];
+  docCaption.appendChild(sScope);
+  if (pass.caption[1]) {
+    docCaption.appendChild(document.createTextNode(' \u00b7 '));
+    var sComp = document.createElement('span');
+    sComp.className = 'compression';
+    sComp.textContent = pass.caption[1];
+    docCaption.appendChild(sComp);
+  }
+
+  // pass indicator
+  passIndicator.replaceChildren();
+  passIndicator.appendChild(document.createTextNode('Pass '));
+  var pn = document.createElement('span');
+  pn.className = 'pass-num';
+  pn.textContent = pNum;
+  passIndicator.appendChild(pn);
+  passIndicator.appendChild(document.createTextNode(' / ' + TOTAL_PASSES));
+
+  await sleep(250 * sp);
+
+  // ── 2. Shrink & fly (document slice) ──
+  arrowIn.classList.add('active');
+
+  // ── 2b. Simultaneously: feed state + prompt into model (passes 2+) ──
+  // Start the state feed animation in parallel with the document shrink
+  var stateFeedPromise = animateStateFeed(idx, sp);
+
+  if (pass.shrinkTo !== null) {
+    var shrunk = document.createElement('div');
+    shrunk.className = 'shrunk-view';
+    for (var sl = 0; sl < pass.shrinkTo; sl++) {
+      var sLine = document.createElement('div');
+      sLine.className = 'shrunk-line';
+      sLine.style.width = (40 + Math.sin(sl * 3.7) * 30 + 30) + '%';
+      shrunk.appendChild(sLine);
+    }
+    var lineH = 6;
+    var topOff = lo * lineH + 12;
+    var rangeH = (hi - lo + 1) * lineH;
+    shrunk.style.top = topOff + 'px';
+    shrunk.style.height = rangeH + 'px';
+    shrunk.style.opacity = '0.9';
+    docContainer.appendChild(shrunk);
+
+    await sleep(125 * sp);
+
+    var shrunkH = pass.shrinkTo * 4 + 16;
+    // Center the shrunk view vertically within the highlighted range
+    var centerTop = topOff + (rangeH - shrunkH) / 2;
+    shrunk.style.transition = 'height 0.3s ease-in-out, top 0.3s ease-in-out';
+    shrunk.style.height = shrunkH + 'px';
+    shrunk.style.top = centerTop + 'px';
+
+    await sleep(350 * sp);
+
+    shrunk.style.transition = 'opacity .15s, transform .15s';
+    shrunk.style.opacity = '0';
+    shrunk.style.transform = 'translateX(80px) scale(0.5)';
+
+    await sleep(150 * sp);
+    if (shrunk.parentNode) shrunk.parentNode.removeChild(shrunk);
+  } else {
+    // verbatim — no shrink
+    await sleep(350 * sp);
+  }
+
+  // Wait for state feed to also finish before pipeline pulse
+  await stateFeedPromise;
+
+  // ── 3. Pipeline pulse ──
+  arrowIn.classList.remove('active');
+  pipelineBox.classList.add('pulsing');
+  await sleep(500 * sp);
+  pipelineBox.classList.remove('pulsing');
+
+  // ── 4. Output to state ──
+  arrowOut.classList.add('active');
+  await sleep(125 * sp);
+
+  if (stateEmpty && stateEmpty.parentNode) stateEmpty.style.display = 'none';
+
+  // ADDs
+  for (var a = 0; a < pass.adds.length; a++) {
+    var entry = pass.adds[a];
+    var el = document.createElement('div');
+    el.className = 'state-entry';
+    el.setAttribute('data-id', entry.id);
+
+    if (entry.type === 'header') {
+      el.classList.add('header-line');
+    } else {
+      el.classList.add('bullet-line');
+      el.classList.add('new-add');
+    }
+    el.textContent = entry.text;
+
+    // tag
+    var tag = document.createElement('span');
+    tag.className = 'tag';
+    if (pass.tagStyle === 'scaffold') {
+      tag.classList.add('tag-scaffold');
+      tag.textContent = 'SCAFFOLD';
+    } else {
+      tag.classList.add('tag-add');
+      tag.textContent = 'ADD';
+    }
+    el.appendChild(tag);
+
+    // insert position
+    if (entry.after && stateElements[entry.after]) {
+      var afterEl = stateElements[entry.after];
+      if (afterEl.nextSibling) stateContainer.insertBefore(el, afterEl.nextSibling);
+      else stateContainer.appendChild(el);
+      var afterIdx = stateOrder.indexOf(entry.after);
+      stateOrder.splice(afterIdx + 1, 0, entry.id);
+    } else {
+      stateContainer.appendChild(el);
+      stateOrder.push(entry.id);
+    }
+    stateElements[entry.id] = el;
+
+    await sleep(30 * sp);
+    el.classList.add('visible');
+    await sleep(50 * sp);
+  }
+
+  // REPLACEs
+  for (var r = 0; r < pass.replaces.length; r++) {
+    var rep = pass.replaces[r];
+    var existing = stateElements[rep.id];
+    if (!existing) continue;
+
+    if (rep.isMoney) {
+      // Money shot: strike old, insert corrected below
+      existing.classList.add('struck');
+      var oTag = existing.querySelector('.tag');
+      if (oTag) existing.removeChild(oTag);
+
+      await sleep(200 * sp);
+
+      var corrected = document.createElement('div');
+      corrected.className = 'state-entry bullet-line visible replaced';
+      corrected.textContent = rep.newText;
+      var rTag = document.createElement('span');
+      rTag.className = 'tag tag-replace';
+      rTag.textContent = 'REPLACE';
+      corrected.appendChild(rTag);
+
+      if (existing.nextSibling) stateContainer.insertBefore(corrected, existing.nextSibling);
+      else stateContainer.appendChild(corrected);
+
+      await sleep(100 * sp);
+      corrected.classList.add('correction-flash');
+      stateElements[rep.id] = corrected;
+
+      // scroll to the correction
+      corrected.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+      // Minor replace
+      var oldTag2 = existing.querySelector('.tag');
+      if (oldTag2) existing.removeChild(oldTag2);
+      existing.replaceChildren();
+      existing.textContent = rep.newText;
+      var rTag2 = document.createElement('span');
+      rTag2.className = 'tag tag-replace';
+      rTag2.textContent = 'REPLACE';
+      existing.appendChild(rTag2);
+      existing.classList.add('replaced', 'correction-flash');
+      await sleep(125 * sp);
+      setTimeout(function(e) { e.classList.remove('replaced'); }, 1500, existing);
+    }
+  }
+
+  // clean up add highlights
+  await sleep(175 * sp);
+  var addEls = stateContainer.querySelectorAll('.new-add');
+  for (var ae = 0; ae < addEls.length; ae++) addEls[ae].classList.remove('new-add');
+
+  arrowOut.classList.remove('active');
+
+  await sleep(125 * sp);
+  for (var k = 0; k < DOC_LINES; k++) docLineEls[k].className = 'doc-line';
+
+  dots[idx].className = 'dot done';
+  btnStep.disabled = false;
+}
+
+/* ──────────────────────────────────────────
+   CONTROLS
+   ────────────────────────────────────────── */
+function stopPlay() {
+  isPlaying = false;
+  btnPlay.replaceChildren();
+  btnPlay.textContent = '\u25B6 Play';
+}
+
+async function playSequence() {
+  if (isPlaying) { stopPlay(); return; }
+  isPlaying = true;
+  btnPlay.replaceChildren();
+  btnPlay.textContent = '\u23F8 Pause';
+
+  var start = currentPass + 1;
+  if (start >= TOTAL_PASSES) { resetAll(); start = 0; isPlaying = true; btnPlay.replaceChildren(); btnPlay.textContent = '\u23F8 Pause'; }
+
+  for (var i = start; i < TOTAL_PASSES; i++) {
+    if (!isPlaying) break;
+    await animatePass(i);
+    if (!isPlaying) break;
+    if (i < TOTAL_PASSES - 1) await sleep(450);
+  }
+
+  if (isPlaying && currentPass >= TOTAL_PASSES - 1) {
+    await sleep(1250);
+    if (isPlaying) { resetAll(); isPlaying = true; btnPlay.replaceChildren(); btnPlay.textContent = '\u23F8 Pause'; playSequence(); return; }
+  }
+  stopPlay();
+}
+
+async function stepForward() {
+  if (isPlaying) stopPlay();
+  var next = currentPass + 1;
+  if (next >= TOTAL_PASSES) { resetAll(); return; }
+  await animatePass(next);
+}
+
+btnPlay.addEventListener('click', function() { playSequence(); });
+btnStep.addEventListener('click', function() { stepForward(); });
+btnReset.addEventListener('click', function() { resetAll(); });
+
+resetAll();
+</script>
+</body>
+</html>
