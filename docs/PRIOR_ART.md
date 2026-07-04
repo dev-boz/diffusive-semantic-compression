@@ -10,7 +10,7 @@ Same pattern as Cold Diffusion, fixed-size, restores on the output. For DiSCo no
 [RAPTOR](https://arxiv.org/abs/2401.18059)
 Structurally, the same multi-resolution representation of the source with hierarchical compression. But RAPTOR is a retrieval system, DiSCo is a processing system.
 
-[LCM](https://arxiv.org/abs/2605.04050)
+[Lossless Context Management](https://arxiv.org/abs/2605.04050)
 An extension to RLM with the same spirit but slight difference. Same hierarchical summarization idea. 
 LCM's Compaction is engine-triggered, recovery is model-contingent. Context Diffusion is deterministic, the pass schedule governs recovery, no engine has to fire for any slice to be read at full resolution. LCM has no model training and the engine works with off-the-shelf models. Pass-Conditioned Training is a proposal for exactly that.
 
